@@ -36,8 +36,12 @@ class ViewController: NSViewController, USBWatcherDelegate {
     }
 
     func deviceRemoved(_ device: io_object_t) {
-        // The USB notification is the source of truth here. Do not query a device
-        // after it has been removed; the native API may return an invalid pointer.
+        // Ignore unrelated USB removals so a keyboard, hub, or storage device
+        // cannot clear the connected iPhone's information.
+        guard let info = device.getInfo(),
+              info.productId == 4776 || info.productId == 4779 else {
+            return
+        }
         clearDeviceInformation()
     }
 
