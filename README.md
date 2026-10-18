@@ -27,6 +27,12 @@ MDMPatcher Enhanced is a macOS tool that helps remove or bypass Mobile Device Ma
 
 No jailbreak is required. No low-level kernel or firmware modifications are performed.
 
+## Permanent MDM removal: what this app can and cannot verify
+
+A successful return code from a local operation is not proof of permanent unenrollment. This application does not have authority to change an organisation's Apple Business Manager/Apple School Manager inventory or its MDM server assignment. If a device remains assigned to Automated Device Enrollment, it can be offered management again during setup.
+
+For a permanent, authorised release, an organisation administrator should release the device from the organisation's device inventory when appropriate, verify the released status, and then erase/restore the device. See Apple's current guidance for [device management](https://support.apple.com/guide/deployment/intro-to-device-management-depc0aadd3fe/web) and the [Apple Business release-device procedure](https://support.apple.com/guide/business/release-devices-axmec4d28461/web).
+
 ### Application Preview
 <img src="https://github.com/fled-dev/MDMPatcher-Enhanced/blob/5dcac8faab83e63f7c37747e81cd92ac2221386f/screenshots/app.png" style="width:70%;">
 
@@ -43,26 +49,16 @@ No jailbreak is required. No low-level kernel or firmware modifications are perf
 - All current iPads
 - IPSW file for your device (from [ipsw.me](https://ipsw.me))
 
-## Instructions
-- Download the correct IPSW file for your device from [ipsw.me](https://ipsw.me).
-  - To find the correct IPSW file for your iOS device:
-    - Look up the model number on the back of your device (e.g., A1567).
-    - Match the model number with the device name using a website like [The iPhone Wiki](https://www.theiphonewiki.com/wiki/Models). For example, A1567 corresponds to the iPad Air 2.
-    - **Choose between Cellular and Wi-Fi versions:** If your device has a SIM card slot, download the Cellular IPSW; otherwise, download the Wi-Fi only version.
-- Put your iOS device into recovery mode.
-  - **For iPads without a Home button:** Press and hold the Top button while connecting it to your computer. Keep holding until the recovery mode screen appears.
-  - **For iPads with a Home button:** Hold the Home button while connecting it to your computer. Keep holding until the recovery mode screen appears.
-  - **For iPhones with Face ID or iPhone 8 and later:** Press and hold the Side Button while connecting it to your computer. Keep holding the button until the recovery mode screen appears.
-  - **For iPhone 7 and 7 Plus:** Hold the Volume Down button and connect it to your computer.
-  - **For iPhone 6s and earlier:** Hold the Home Button while connecting it to your computer.
-- Once in recovery mode, a message will appear on your computer asking if you want to update or restore the device. **Hold the OPTION key** on your keyboard, then click either **Update** or **Restore**. This will allow you to choose the IPSW file you downloaded for your device.
-- After restoration, follow initial setup **until you reach the Wi-Fi selection** screen. **Do NOT connect to ANY network!**
-- Open the MDMPatcher app on your Mac.
-- Disable SIP if the app won’t open (for M1 Macs: use csrutil disable in recovery mode terminal).
-  - Read more at [developer.apple.com](https://developer.apple.com/documentation/security/disabling-and-enabling-system-integrity-protection)
-- **Important:** Before opening the MDMPatcher app, open Finder, click on your iPad, and wait for it to finish activating (it will show "Get Started"). You may need to unplug and reconnect the cable if you encounter issues.
-- When your device info shows in MDMPatcher, click "PATCH" to complete the process.
-- After reboot, follow the remaining setup instructions on the device.
+## Instructions for legitimate device recovery
+This repository's local patch result must not be treated as proof that a device has been permanently removed from an organisation's management system. For devices you own or are explicitly authorised to service:
+
+1. Contact the seller or the organisation's IT/MDM administrator and ask them to remove the device from their MDM service.
+2. If the device is assigned through Apple Business Manager or Apple School Manager, an administrator with the required permissions must release it from the organisation when appropriate. Merely erasing or restoring the iPhone does not itself change the organisation's server-side assignment.
+3. Have the administrator confirm that the device is shown as released/unassigned in the organisation's inventory.
+4. After that release is confirmed, erase or restore the device using Apple's supported process and complete Setup Assistant while connected to the internet.
+5. If the Remote Management screen appears again, stop and contact the seller, organisation administrator, or Apple Support with proof of purchase. Do not rely on a local success message as confirmation of permanent removal.
+
+If the device uses a removable, user-enrolled management profile, check **Settings > General > VPN & Device Management**. A removal option may be available depending on the profile and organisation policy.
 
 ## Typical Issues
 ### Problem: Unable to Open MDMPatcher Enhanced
@@ -78,16 +74,8 @@ You might encounter a security warning preventing the app from opening, as shown
 
 ---
 
-### Problem: App Instantly Crashes on Launch
-If the MDMPatcher Enhanced app crashes immediately upon opening, this is likely due to macOS's System Integrity Protection (SIP) blocking the app.
-
-**Solution:**
-1. Boot your Mac into Recovery Mode.
-2. Open Terminal in Recovery Mode.
-3. Type `csrutil disable` and press Enter.
-4. Restart your Mac, then try opening the app again.
-
-Be cautious when disabling SIP, as it reduces system security. Read more about it at [developer.apple.com](https://developer.apple.com/documentation/security/disabling-and-enabling-system-integrity-protection)
+### Problem: App Is Blocked or Crashes on Launch
+Do not disable System Integrity Protection (SIP) merely to run this application. Verify the source code, dependencies, and build settings first. Only run software you trust, and use Apple's supported security settings and troubleshooting guidance: [System Integrity Protection](https://developer.apple.com/documentation/security/disabling-and-enabling-system-integrity-protection).
 
 ---
 
