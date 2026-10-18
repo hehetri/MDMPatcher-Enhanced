@@ -129,71 +129,64 @@ int progress_cb(irecv_client_t client, const irecv_event_t* event) {
 
 /// Customized Section
 
-char *getdeviceInformation() // For getting general information about the device
+char *getdeviceInformation(void)
 {
-    lockdownd_client_t client = NULL;
-    lockdownd_error_t ldret = LOCKDOWN_E_UNKNOWN_ERROR;
+    lockdownd_client_t lockdown = NULL;
     idevice_t device = NULL;
-    idevice_error_t ret = IDEVICE_E_UNKNOWN_ERROR;
-    int simple = 0;
-    int format = FORMAT_KEY_VALUE;
-    const char* udid = NULL;
-    int use_network = 0;
-    const char *domain = NULL;
-    const char *key = NULL;
-    char *xml_doc = NULL;
-    uint32_t xml_length;
     plist_t node = NULL;
+    char *xml_doc = NULL;
+    uint32_t xml_length = 0;
+    idevice_error_t device_result;
+    lockdownd_error_t lockdown_result;
 
-    ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
-    if (ret != IDEVICE_E_SUCCESS) {
-        if (udid) {
-            printf("ERROR: Device %s not found!\n", udid);
-        } else {
-            printf("ERROR: No device found!\n");
-        }
-        return "-1";
+    device_result = idevice_new_with_options(
+        &device, NULL, IDEVICE_LOOKUP_USBMUX);
+    if (device_result != IDEVICE_E_SUCCESS || device == NULL) {
+        fprintf(stderr, "ERROR: No USB device found (%d).\\n", device_result);
+        return strdup("-1");
     }
 
-    if (LOCKDOWN_E_SUCCESS != (ldret = simple ?
-            lockdownd_client_new(device, &client, TOOL_NAME):
-            lockdownd_client_new_with_handshake(device, &client, TOOL_NAME))) {
-        fprintf(stderr, "ERROR: Could not connect to lockdownd: %s (%d)\n", lockdownd_strerror(ldret), ldret);
+    lockdown_result = lockdownd_client_new_with_handshake(
+        device, &lockdown, "MDMPatcher");
+    if (lockdown_result != LOCKDOWN_E_SUCCESS || lockdown == NULL) {
+        fprintf(stderr, "ERROR: Could not connect to lockdownd: %s (%d)\\n",
+                lockdownd_strerror(lockdown_result), lockdown_result);
+        if (lockdown != NULL) {
+            lockdownd_client_free(lockdown);
+        }
         idevice_free(device);
-        return "-1";
+        return strdup("-1");
     }
 
-    if (domain && !is_domain_known(domain)) {
-        fprintf(stderr, "WARNING: Sending query with unknown domain \"%s\".\n", domain);
-    }
-    
-    
-
-    /* run query and output information */
-    if(lockdownd_get_value(client, domain, key, &node) == LOCKDOWN_E_SUCCESS) {
-        if (node) {
-            format = FORMAT_XML;
-            switch (format) {
-            case FORMAT_XML:
-                plist_to_xml(node, &xml_doc, &xml_length);
-                return xml_doc;
-            case FORMAT_KEY_VALUE:
-                //plist_print_to_stream(node, stdout);
-                break;
-            default:
-                if (key != NULL)
-                //plist_print_to_stream(node, stdout);
-            break;
-            }
+    lockdown_result = lockdownd_get_value(lockdown, NULL, NULL, &node);
+    if (lockdown_result != LOCKDOWN_E_SUCCESS || node == NULL) {
+        fprintf(stderr, "ERROR: Could not read device values from lockdownd (%d).\\n",
+                lockdown_result);
+        if (node != NULL) {
             plist_free(node);
-            node = NULL;
         }
+        lockdownd_client_free(lockdown);
+        idevice_free(device);
+        return strdup("-1");
     }
 
-    lockdownd_client_free(client);
+    plist_to_xml(node, &xml_doc, &xml_length);
+
+    plist_free(node);
+    lockdownd_client_free(lockdown);
     idevice_free(device);
 
-    return "0";
+    if (xml_doc == NULL || xml_length == 0) {
+        free(xml_doc);
+        fprintf(stderr, "ERROR: Could not serialize device information.\\n");
+        return strdup("-1");
+    }
+
+    /*
+     * Ownership contract: the returned string is heap-allocated and belongs
+     * to the caller. The Swift caller must copy it to String and then free it.
+     */
+    return xml_doc;
 }
 
 char *getspecialdeviceInformation(const char *domain_) // For getting general information about the device
