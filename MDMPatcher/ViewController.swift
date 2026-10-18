@@ -62,6 +62,8 @@ class ViewController: NSViewController, USBWatcherDelegate {
         }
 
         let text = String(cString: rawInfo)
+        free(UnsafeMutableRawPointer(rawInfo))
+
         guard text != "-1", let data = text.data(using: .utf8), !data.isEmpty else {
             throw DeviceReadError.unavailable
         }
@@ -141,13 +143,14 @@ class ViewController: NSViewController, USBWatcherDelegate {
                 
                 patchFile3(PATH: bPatho)
                             
-                let input = String(cString: getdeviceInformation()).data(using: .utf8)
-                let uuid = "\(try PropertyListDecoder().decode(_UniqueDeviceID_.self, from: input!).UniqueDeviceID)"
-                let sn = "\(try PropertyListDecoder().decode(_SerialNumber_.self, from: input!).SerialNumber)"
-                let buildid = "\(try PropertyListDecoder().decode(_BuildVersion_.self, from: input!).BuildVersion)"
-                let productType = "\(try PropertyListDecoder().decode(_ProductType_.self, from: input!).ProductType)"
-
-                let imei = getIMEI()
+                // Read and validate device metadata once. The native query returns
+                // caller-owned memory, which readDeviceSnapshot releases after copying.
+                let snapshot = try readDeviceSnapshot()
+                let uuid = snapshot.UniqueDeviceID
+                let sn = snapshot.SerialNumber
+                let buildid = snapshot.BuildVersion
+                let productType = snapshot.ProductType
+                let imei = snapshot.InternationalMobileEquipmentIdentity ?? ""
 
                 patchFile1(BuildID: buildid, IMEI: imei, ProductType: productType, SN: sn, UDID: uuid, PATH: bPatho.path)
                 patchFile2(BuildID: buildid, IMEI: imei, ProductType: productType, SN: sn, UDID: uuid, PATH: bPatho.path)
