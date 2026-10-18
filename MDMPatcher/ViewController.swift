@@ -2,6 +2,7 @@
 import RNCryptor
 import Cocoa
 import ZIPFoundation
+import Darwin
 
 var usbWatcher: USBWatcher!
 
