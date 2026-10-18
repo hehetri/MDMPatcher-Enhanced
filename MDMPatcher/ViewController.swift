@@ -5,54 +5,89 @@ import ZIPFoundation
 
 var usbWatcher: USBWatcher!
 
+private struct DeviceSnapshot: Decodable {
+    let ProductType: String
+    let SerialNumber: String
+    let ProductVersion: String
+    let BuildVersion: String
+    let UniqueDeviceID: String
+    let ActivationState: String?
+    let InternationalMobileEquipmentIdentity: String?
+}
+
+private enum DeviceReadError: Error {
+    case unavailable
+    case invalidResponse(Error)
+}
 
 class ViewController: NSViewController, USBWatcherDelegate {
 
     func deviceAdded(_ device: io_object_t) {
-        print("Device connected")
-        //print(device.getInfo())
-        if device.getInfo()?.productId == 4776 || device.getInfo()?.productId == 4779 {
-            connectToDevice()
+        guard let info = device.getInfo() else {
+            NSLog("USB device information could not be read")
+            return
         }
 
+        guard info.productId == 4776 || info.productId == 4779 else {
+            return
+        }
+
+        connectToDevice()
     }
-    
+
     func deviceRemoved(_ device: io_object_t) {
-        if String(cString: getdeviceInformation()) == "-1" {
-            DeviceModel.stringValue.removeAll()
-            DeviceSN.stringValue.removeAll()
-            DeviceUUID.stringValue.removeAll()
-            DeviceFirmware.stringValue.removeAll()
-            DeviceIMEI.stringValue.removeAll()
+        // The USB notification is the source of truth here. Do not query a device
+        // after it has been removed; the native API may return an invalid pointer.
+        clearDeviceInformation()
+    }
+
+    private func clearDeviceInformation() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.DeviceModel.stringValue = ""
+            self.DeviceSN.stringValue = ""
+            self.DeviceUUID.stringValue = ""
+            self.DeviceFirmware.stringValue = ""
+            self.DeviceIMEI.stringValue = ""
         }
     }
-    
-    
-    func connectToDevice() {
- 
+
+    private func readDeviceSnapshot() throws -> DeviceSnapshot {
+        guard let rawInfo = getdeviceInformation() else {
+            throw DeviceReadError.unavailable
+        }
+
+        let text = String(cString: rawInfo)
+        guard text != "-1", let data = text.data(using: .utf8), !data.isEmpty else {
+            throw DeviceReadError.unavailable
+        }
+
         do {
-            let input = String(cString: getdeviceInformation()).data(using: .utf8)
-            
-            DeviceModel.stringValue = try PropertyListDecoder().decode(_ProductType_.self, from: input!).ProductType
-            
-            let activationstate = try PropertyListDecoder().decode(_ActivationState_.self, from: input!).ActivationState
-            //
-            print(try PropertyListDecoder().decode(_BasebandStatus_.self, from: input!).BasebandStatus.uppercased())
-            let serial = try PropertyListDecoder().decode(_SerialNumber_.self, from: input!).SerialNumber.uppercased()
-            DeviceSN.stringValue = serial
-            let ios = "\(try PropertyListDecoder().decode(_ProductVersion_.self, from: input!).ProductVersion) | \(try PropertyListDecoder().decode(_BuildVersion_.self, from: input!).BuildVersion)"
-            DeviceFirmware.stringValue = ios
-            let uuid = "\(try PropertyListDecoder().decode(_UniqueDeviceID_.self, from: input!).UniqueDeviceID)"
-            DeviceUUID.stringValue = uuid
-            
-            let imei = try PropertyListDecoder().decode(_IMEI_.self, from: input!).InternationalMobileEquipmentIdentity
-            DeviceIMEI.stringValue = imei
-            
-            print(serial, ios, uuid, activationstate)
+            return try PropertyListDecoder().decode(DeviceSnapshot.self, from: data)
         } catch {
-            print(error)
+            throw DeviceReadError.invalidResponse(error)
         }
+    }
+
+    func connectToDevice() {
+        do {
+            let snapshot = try readDeviceSnapshot()
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.DeviceModel.stringValue = snapshot.ProductType
+                self.DeviceSN.stringValue = snapshot.SerialNumber.uppercased()
+                self.DeviceFirmware.stringValue = "\(snapshot.ProductVersion) | \(snapshot.BuildVersion)"
+                self.DeviceUUID.stringValue = snapshot.UniqueDeviceID
+                self.DeviceIMEI.stringValue = snapshot.InternationalMobileEquipmentIdentity ?? ""
+            }
+            NSLog("Connected device: %@, iOS %@ (%@), activation state %@",
+                  snapshot.ProductType, snapshot.ProductVersion, snapshot.BuildVersion,
+                  snapshot.ActivationState ?? "unknown")
+        } catch {
+            NSLog("Could not read connected device: %@", String(describing: error))
+            clearDeviceInformation()
         }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -75,9 +110,12 @@ class ViewController: NSViewController, USBWatcherDelegate {
     @IBOutlet var PatchProgress: NSProgressIndicator!
     
     func getIMEI() -> String {
-        let input = String(cString: getdeviceInformation()).data(using: .utf8)
-        let imei = (try? PropertyListDecoder().decode(_IMEI_.self, from: input!).InternationalMobileEquipmentIdentity) ?? ""
-        return imei
+        do {
+            return try readDeviceSnapshot().InternationalMobileEquipmentIdentity ?? ""
+        } catch {
+            NSLog("Could not read device IMEI: %@", String(describing: error))
+            return ""
+        }
     }
     
     @IBOutlet var progB: NSProgressIndicator!
