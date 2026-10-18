@@ -9,7 +9,8 @@ int sendiBEC(char *iBECpath);
 int get_dev();
 
 char* diag(char* com, char* mobileGestaltKey);
-char *getdeviceInformation();
+/* Returned strings are heap-allocated; callers must release them with free(). */
+char *getdeviceInformation(void);
 char *getspecialdeviceInformation(const char *domain_);
 int activationHandler(int function, char *udidIN);
 void plist_print_to_stream(plist_t plist, FILE* stream);
