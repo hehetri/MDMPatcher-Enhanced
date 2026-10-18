@@ -116,8 +116,8 @@ class ViewController: NSViewController, USBWatcherDelegate {
                         progB.stopAnimation(self)
                         progB.doubleValue = 0
                         let alert: NSAlert = NSAlert()
-                            alert.messageText = "Success!"
-                            alert.informativeText = "MDM has been successfully patched on your iDevice...\nPlease finish set up your device...\nHave fun :-)"
+                            alert.messageText = "Operation completed — verification required"
+                            alert.informativeText = "The local operation returned success, but this does not confirm permanent MDM unenrollment or release from an organisation. If the device is assigned to Apple Business Manager/Apple School Manager, ask an authorised administrator to release it and verify the status, then erase/restore and complete setup online."
                         alert.alertStyle = NSAlert.Style.warning
                         alert.addButton(withTitle: "OK")
                         alert.runModal()
